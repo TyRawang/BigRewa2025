@@ -49,7 +49,7 @@ Before setting up BigRewa locally, ensure you have the following installed:
 
 ```bash
 git clone <repository-url>
-cd bigRewaNew
+cd BigRewa2025
 ```
 
 ### 2. Install PHP Dependencies
@@ -190,7 +190,7 @@ FILESYSTEM_DISK=local
 ## 🗂️ Project Structure
 
 ```
-bigRewaNew/
+BigRewa2025/
 ├── app/
 │   ├── Http/Controllers/     # Application controllers
 │   ├── Models/              # Eloquent models
@@ -207,28 +207,6 @@ bigRewaNew/
 │   └── seeders/            # Database seeders
 └── public/                  # Public assets
 ```
-
-## 📚 Usage
-
-### Creating Quotes
-
-1. Navigate to the home page
-2. Fill in customer details and quote information
-3. Add any extra fields as needed
-4. Click "Send" to generate and email the quote
-
-### Managing Emails
-
-1. Go to "Send Mail" to view all sent emails
-2. Use filters to search by customer, status, or price range
-3. Click "View Details" to see full quote information
-4. Update quote status as needed
-
-### Gmail Integration
-
-1. Go to SMTP Settings in the user dropdown
-2. Connect your Gmail account
-3. All emails will be sent through your Gmail account
 
 ## 📄 License
 

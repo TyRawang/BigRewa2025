@@ -305,7 +305,7 @@
                             </li>
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->is('g-send-mail*') ? 'active' : '' }}" href="{{ url('/g-send-mail') }}">
-                                    <i class="fa fa-paper-plane"></i> Send Mail
+                                    <i class="fa fa-paper-plane"></i> Sent Mails
                                 </a>
                             </li>
                             <li class="nav-item">
