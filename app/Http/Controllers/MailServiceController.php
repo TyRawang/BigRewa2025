@@ -14,7 +14,6 @@ use App\Models\MailExtraField;
 use Auth;
 use Illuminate\Support\Facades\DB;
 use Config;
-use Illuminate\Support\Facades\Input;
 use Google\Client;
 use Google\Service\Gmail;
 use Google\Service\Gmail\Message;
@@ -450,7 +449,7 @@ class MailServiceController extends Controller
         $data = $data
             ->orderBy('created_at', 'DESC')->paginate(9);
         session()->flashInput($request->input());
-        return view('sendmail-list', ['data' => $data->appends(Input::except('page'))]);
+        return view('sendmail-list', ['data' => $data->appends($request->except('page'))]);
     }
 
     /**
