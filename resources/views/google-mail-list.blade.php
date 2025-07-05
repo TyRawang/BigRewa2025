@@ -40,7 +40,7 @@
     @if(count($messages) > 0)
     @foreach($messages as $mess)
        <div class="col-sm-4" style="font-size: 14px;line-height: 13px;">
-           <div class="box {{ (in_array('UNREAD', $mess->getLabels())) ?  'unread-bordered' : '' }}">
+           <div class="box {{ (in_array('UNREAD', $mess->getLabelIds())) ?  'unread-bordered' : '' }}">
               <a href="{{ url('google/mail/details/'.$mess->getId().'/'.str_replace(' ', '-', $mess->getSubject())) }}"><h2> {{ $mess->getSubject() }} </h2> </a>
               <i style="font-size:12px;"><span  class="fa fa-calendar"></span> {{ $mess->getDate() }}</i>
               <h6><span style="font-weight:900; font-size:12px;">{{ $mess->getFromName() . " (" .$mess->getFromEmail().")" }}</span></h6>

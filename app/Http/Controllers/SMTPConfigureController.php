@@ -189,7 +189,8 @@ class SMTPConfigureController extends Controller
                 if ($messages->getMessages()) {
                     foreach ($messages->getMessages() as $message) {
                         $messageDetail = $gmail->users_messages->get('me', $message->getId());
-                        $messageList[] = $messageDetail;
+                        // $messageList[] = $messageDetail;
+                        $messageList[] = new GmailMessageWrapper($messageDetail);
                     }
                 }
                 
@@ -255,4 +256,92 @@ class SMTPConfigureController extends Controller
             return redirect('/smtp-configure')->with('error_message', 'Sorry!, something went wrong');
         }
     }
+}
+
+
+class GmailMessageWrapper {
+    private $id;
+    private $subject;
+    private $from;
+    private $fromName;
+    private $fromEmail;
+    private $date;
+    private $labelIds;
+    private $htmlBody;
+
+    public function __construct($message) {
+        $this->id = $message->getId();
+        $this->labelIds = $message->getLabelIds();
+        $headers = $message->getPayload()->getHeaders();
+
+        foreach ($headers as $header) {
+            switch ($header->getName()) {
+                case 'Subject':
+                    $this->subject = $header->getValue();
+                    break;
+                case 'From':
+                    $this->from = $header->getValue();
+                    $this->parseFrom($this->from);
+                    break;
+                case 'Date':
+                    $this->date = $header->getValue();
+                    break;
+            }
+        }
+
+        $this->htmlBody = $this->extractHtmlBody($message->getPayload());
+    }
+
+    private function parseFrom($fromHeader) {
+        if (preg_match('/^(.*)<(.+)>$/', $fromHeader, $matches)) {
+            $this->fromName = trim($matches[1], "\" ");
+            $this->fromEmail = trim($matches[2]);
+        } else {
+            $this->fromName = '';
+            $this->fromEmail = trim($fromHeader);
+        }
+    }
+
+    private function extractHtmlBody($payload) {
+        // If HTML is directly in the payload
+        if ($payload->getMimeType() === 'text/html' && $payload->getBody()->getData()) {
+            return $this->decodeBody($payload->getBody()->getData());
+        }
+
+        // Check parts
+        if ($payload->getParts()) {
+            foreach ($payload->getParts() as $part) {
+                if ($part->getMimeType() === 'text/html') {
+                    return $this->decodeBody($part->getBody()->getData());
+                }
+
+                // Nested multipart
+                if ($part->getParts()) {
+                    foreach ($part->getParts() as $subpart) {
+                        if ($subpart->getMimeType() === 'text/html') {
+                            return $this->decodeBody($subpart->getBody()->getData());
+                        }
+                    }
+                }
+            }
+        }
+
+        return '';
+    }
+
+    private function decodeBody($bodyData) {
+        // Gmail API base64 encodes with URL-safe characters
+        $bodyData = str_replace(['-', '_'], ['+', '/'], $bodyData);
+        return base64_decode($bodyData);
+    }
+
+    // Getters
+    public function getId() { return $this->id; }
+    public function getSubject() { return $this->subject; }
+    public function getFrom() { return $this->from; }
+    public function getFromName() { return $this->fromName; }
+    public function getFromEmail() { return $this->fromEmail; }
+    public function getDate() { return $this->date; }
+    public function getLabelIds() { return $this->labelIds; }
+    public function getHtmlBody() { return $this->htmlBody; }
 }

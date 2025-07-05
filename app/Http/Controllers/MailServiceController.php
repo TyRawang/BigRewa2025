@@ -239,28 +239,41 @@ class MailServiceController extends Controller
 
                 if ($m_template) {
                     if (\View::exists('emails.user.' . Auth::user()->getCustomerNo() . '.' . $m_template->email_template_token)) {
-                        $html = view('emails.user.' . Auth::user()->getCustomerNo() . '.' . $m_template->email_template_token, $displaydata);
+                        $html = view('emails.user.' . Auth::user()->getCustomerNo() . '.' . $m_template->email_template_token, $displaydata)->render();
                     } else {
-                        $html = view('emails.send_ticket_mail', $displaydata);
+                        $html = view('emails.send_ticket_mail', $displaydata)->render();
                     }
                 } else {
-                    $html = view('emails.send_ticket_mail', $displaydata);
+                    $html = view('emails.send_ticket_mail', $displaydata)->render();
                 }
 
                 // Create Gmail message
                 $gmail = new Gmail($client);
                 $message = new Message();
                 
+                // Create proper multipart message
+                $boundary = uniqid();
                 $rawMessageString = "From: {$googlesmtp->email}\r\n";
                 $rawMessageString .= "To: {$email}\r\n";
-                $rawMessageString .= "Subject: {$subject}\r\n";
+                $rawMessageString .= "Subject: =?UTF-8?B?" . base64_encode($subject) . "?=\r\n";
                 $rawMessageString .= "MIME-Version: 1.0\r\n";
-                $rawMessageString .= "Content-Type: text/html; charset=utf-8\r\n";
+                $rawMessageString .= "Content-Type: multipart/alternative; boundary=\"{$boundary}\"\r\n\r\n";
+                
+                // Add plain text version (optional but recommended)
+                $rawMessageString .= "--{$boundary}\r\n";
+                $rawMessageString .= "Content-Type: text/plain; charset=UTF-8\r\n";
                 $rawMessageString .= "Content-Transfer-Encoding: quoted-printable\r\n\r\n";
-                $rawMessageString .= $html->render();
+                $rawMessageString .= strip_tags($html) . "\r\n\r\n";
+                
+                // Add HTML version
+                $rawMessageString .= "--{$boundary}\r\n";
+                $rawMessageString .= "Content-Type: text/html; charset=UTF-8\r\n";
+                $rawMessageString .= "Content-Transfer-Encoding: quoted-printable\r\n\r\n";
+                $rawMessageString .= quoted_printable_encode($html) . "\r\n\r\n";
+                
+                $rawMessageString .= "--{$boundary}--";
 
-                $rawMessage = base64_encode($rawMessageString);
-                $rawMessage = str_replace(['+', '/', '='], ['-', '_', ''], $rawMessage);
+                $rawMessage = rtrim(strtr(base64_encode($rawMessageString), '+/', '-_'), '=');
                 $message->setRaw($rawMessage);
 
                 $gmail->users_messages->send('me', $message);
