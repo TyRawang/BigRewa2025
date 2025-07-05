@@ -59,7 +59,7 @@ class MailServiceController extends Controller
         $mailServiceData->estimatedWeight = $input['estimatedWeight'];
         $mailServiceData->costPerPound = $input['costPerPound'];
         $mailServiceData->movingdate1 = $input['movingdate1'];
-        $mailServiceData->movingdate2 = $input['movingdate2'];
+        $mailServiceData->movingdate2 = isset($input['movingdate2']) ? $input['movingdate2'] : 'N/A';
         $mailServiceData->leadInfo = $input['leadInfo'];
         $mailServiceData->save();
         return $mailServiceData;
@@ -165,7 +165,7 @@ class MailServiceController extends Controller
                     'estimatedWeightCharges' => number_format($estimatedWeightCharges, '2'),
                     'costPerPound' => number_format($input['costPerPound'], '2'),
                     'movingdate1' => $input['movingdate1'],
-                    'movingdate2' => $input['movingdate2'],
+                    'movingdate2' => isset($input['movingdate2']) ? $input['movingdate2'] : 'N/A',
                     'leadInfo' => $input['leadInfo'],
                     'total' => number_format($total, '2'),
                     'leadsProInfo' => 'leadsProInfo',

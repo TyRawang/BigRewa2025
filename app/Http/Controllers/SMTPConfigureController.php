@@ -94,6 +94,7 @@ class SMTPConfigureController extends Controller
         $client->setRedirectUri(env('GOOGLE_REDIRECT_URI', url('/oauth/gmail/callback')));
         $client->addScope(Gmail::GMAIL_READONLY);
         $client->addScope(Gmail::GMAIL_SEND);
+        $client->addScope(Gmail::GMAIL_MODIFY);
         $client->addScope('email');
         $client->setAccessType('offline');
         $client->setPrompt('consent');
@@ -116,6 +117,7 @@ class SMTPConfigureController extends Controller
             $client->setRedirectUri(env('GOOGLE_REDIRECT_URI', url('/oauth/gmail/callback')));
             $client->addScope(Gmail::GMAIL_READONLY);
             $client->addScope(Gmail::GMAIL_SEND);
+            $client->addScope(Gmail::GMAIL_MODIFY);
             $client->addScope('email');
             $client->setAccessType('offline');
 
@@ -182,7 +184,7 @@ class SMTPConfigureController extends Controller
                 $month = 1;
                 $fltr_date = date("Y-m-d", strtotime("-" . $month . " months", strtotime($current_date)));
                 
-                $query = 'in:inbox after:' . $fltr_date . ' subject:"New lead from Leads"';
+                $query = 'in:inbox after:' . $fltr_date . ' subject:"New lead from"';
                 $messages = $gmail->users_messages->listUsersMessages('me', ['q' => $query]);
                 
                 $messageList = [];
@@ -229,12 +231,18 @@ class SMTPConfigureController extends Controller
 
                 $gmail = new Gmail($client);
                 $message = $gmail->users_messages->get('me', $id);
+                $message = new GmailMessageWrapper($message);
                 
                 if ($message) {
-                    // Mark as read
-                    $gmail->users_messages->modify('me', $id, new \Google\Service\Gmail\ModifyMessageRequest([
-                        'removeLabelIds' => ['UNREAD']
-                    ]));
+                    // Try to mark as read, but don't fail if it doesn't work
+                    try {
+                        $gmail->users_messages->modify('me', $id, new \Google\Service\Gmail\ModifyMessageRequest([
+                            'removeLabelIds' => ['UNREAD']
+                        ]));
+                    } catch (Exception $e) {
+                        // Log the error but continue - marking as read is not critical
+                        \Log::warning('Could not mark email as read: ' . $e->getMessage());
+                    }
                     
                     $extra_fields = ExtraField::where('user_id', Auth::id())->orderBy('sorted', 'ASC')->get();
                     return view('single-mail')->with(['message' => $message, 'extra_fields' => $extra_fields]);

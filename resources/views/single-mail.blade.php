@@ -47,17 +47,69 @@
         $string =  $message->getHtmlBody();
         $output = explode("<br>", $string);
         $c_email = '';
+        $c_phone = '';
+        $c_movingdate1 = '';
         $c_name = '';
+        $c_leadInfo = '';
          foreach($output as $string){
             if (strpos($string, 'Email') !== false) {
-                $arr_val = explode(':', $string);
-                $c_email = (isset($arr_val[1])) ? $arr_val[1] : '---';
+                $arr_val = explode(':', $string, 2); // Limit to 2 parts to handle cases with multiple colons
+                if (isset($arr_val[1])) {
+                    $email_part = trim($arr_val[1]);
+                    
+                    // Check if it's an HTML anchor tag with mailto
+                    if (preg_match('/<a[^>]*href=["\']mailto:([^"\']+)["\'][^>]*>([^<]+)<\/a>/', $email_part, $matches)) {
+                        $c_email = trim($matches[1]); // Extract email from mailto: link
+                    } else {
+                        // Strip any HTML tags and get plain text
+                        $c_email = trim(strip_tags($email_part));
+                    }
+                } else {
+                    $c_email = '---';
+                }
             }
 
             if (strpos($string, 'Name') !== false) {
-                $arr_val = explode(':', $string);
-                $c_name = (isset($arr_val[1])) ? $arr_val[1] : '---';
+                $arr_val = explode(':', $string, 2); // Limit to 2 parts
+                if (isset($arr_val[1])) {
+                    $name_part = trim($arr_val[1]);
+                    // Strip any HTML tags and get plain text
+                    $c_name = trim(strip_tags($name_part));
+                } else {
+                    $c_name = '---';
+                }
             }
+
+            if (strpos($string, 'Phone Number') !== false) {
+                $arr_val = explode(':', $string, 2); // Limit to 2 parts
+                if (isset($arr_val[1])) {
+                    $phone_part = trim($arr_val[1]);
+                    $c_phone = trim(strip_tags($phone_part));
+                } else {
+                    $c_phone = '---';
+                }
+            }   
+
+            if (strpos($string, 'Move Date') !== false) {
+                $arr_val = explode(':', $string, 2); // Limit to 2 parts
+                if (isset($arr_val[1])) {
+                    $movingdate1_part = trim($arr_val[1]);
+                    $c_movingdate1 = trim(strip_tags($movingdate1_part));
+                } else {
+                    $c_movingdate1 = '---';
+                }
+            }       
+
+            if (strpos($string, 'Lead ID') !== false) {
+                $arr_val = explode(':', $string, 2); // Limit to 2 parts
+                if (isset($arr_val[1])) {
+                    $leadInfo_part = trim($arr_val[1]);
+                    $c_leadInfo = trim(strip_tags($leadInfo_part));
+                } else {
+                    $c_leadInfo = '---';
+                }
+            }   
+            
          }
     ?>
    <div class="col-lg-6" style="border-right:1px solid #DDD">
@@ -115,7 +167,20 @@
                         {!! $errors->first('customerEmail', '<p class="help-block">:message</p>') !!}
                     </div>
                 </div>
-                
+                <div class="form-group  {{ $errors->has('customerPhone') ? 'has-error' : ''}}">
+                    <label for="customerPhone" class="col-md-12 control-label">Customer Phone</label>
+                    <div class="col-md-12">
+                        <input id="customerPhone" type="tel" class="form-control" name="customerPhone" value="{{ $c_phone }}" required>
+                        {!! $errors->first('customerPhone', '<p class="help-block">:message</p>') !!}
+                    </div>
+                </div>                
+                <div class="form-group  {{ $errors->has('movingdate1') ? 'has-error' : ''}}">
+                    <label for="movingdate1" class="col-md-12 control-label">Moving Date</label>
+                    <div class="col-md-12">
+                        <input id="movingdate1" type="text" class="form-control" name="movingdate1" value="{{ $c_movingdate1 }}" required>
+                        {!! $errors->first('movingdate1', '<p class="help-block">:message</p>') !!}
+                    </div>
+                </div>                      
                 <div class="form-group  {{ $errors->has('estimatedWeight') ? 'has-error' : ''}}">
                     <label for="estimatedWeight" class="col-md-12 control-label">Estimated Weight</label>
                     <div class="col-md-12">
@@ -130,6 +195,15 @@
                         {!! $errors->first('costPerPound', '<p class="help-block">:message</p>') !!}
                     </div>
                 </div>
+                <div class="form-group  {{ $errors->has('leadInfo') ? 'has-error' : ''}}">
+                    <label for="leadInfo" class="col-md-12 control-label">Lead Info</label>
+                    <div class="col-md-12">
+                        <textarea id="leadInfo" type="text" class="form-control" name="leadInfo" value="{{ $c_leadInfo }}" required>{{ $c_leadInfo }}</textarea>
+                        {!! $errors->first('leadInfo', '<p class="help-block">:message</p>') !!}
+                    </div>
+                </div>                      
+
+
                    @if(count($extra_fields) > 0)
                     @foreach($extra_fields as $key => $field)
                     <div class="form-group">
