@@ -49,8 +49,8 @@ class SMTPConfigureController extends Controller
      * 
      * CHANGE THESE VALUES TO MODIFY PAGE SIZE:
      */
-    const GMAIL_INBOX_PER_PAGE = 3;  // ← CHANGE THIS to modify emails per page
-    const GMAIL_BATCH_SIZE = 3;       // ← CHANGE THIS to modify batch processing size
+    const GMAIL_INBOX_PER_PAGE = 9;  // ← CHANGE THIS to modify emails per page
+    const GMAIL_BATCH_SIZE = 9;       // ← CHANGE THIS to modify batch processing size
     
     /**
      * Get Gmail pagination settings
