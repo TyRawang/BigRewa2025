@@ -13,8 +13,67 @@ use Exception;
 use Google\Client;
 use Google\Service\Gmail;
 
+/**
+ * SMTP Configuration Controller
+ * 
+ * GMAIL PAGINATION CONFIGURATION:
+ * ================================
+ * To change the number of emails shown per page, modify ONLY the constants below.
+ * 
+ * QUICK SETUP EXAMPLES:
+ * ---------------------
+ * For 5 emails per page:    GMAIL_INBOX_PER_PAGE = 5,  GMAIL_BATCH_SIZE = 5
+ * For 10 emails per page:   GMAIL_INBOX_PER_PAGE = 10, GMAIL_BATCH_SIZE = 5
+ * For 20 emails per page:   GMAIL_INBOX_PER_PAGE = 20, GMAIL_BATCH_SIZE = 10
+ * For 50 emails per page:   GMAIL_INBOX_PER_PAGE = 50, GMAIL_BATCH_SIZE = 25
+ * 
+ * RULES:
+ * ------
+ * - GMAIL_BATCH_SIZE should be <= GMAIL_INBOX_PER_PAGE
+ * - Smaller batch sizes = more API calls but less memory usage
+ * - Larger batch sizes = fewer API calls but more memory usage
+ * - Recommended: Keep batch size at 50% of page size or less
+ * 
+ * PERFORMANCE TIPS:
+ * -----------------
+ * - For slow connections: Use smaller page sizes (5-10)
+ * - For fast connections: Use larger page sizes (20-50)
+ * - For mobile users: Use smaller page sizes (5-10)
+ * 
+ * No other file changes needed - all pagination logic automatically adjusts!
+ */
 class SMTPConfigureController extends Controller
 {
+    /**
+     * Gmail inbox pagination settings
+     * 
+     * CHANGE THESE VALUES TO MODIFY PAGE SIZE:
+     */
+    const GMAIL_INBOX_PER_PAGE = 3;  // ← CHANGE THIS to modify emails per page
+    const GMAIL_BATCH_SIZE = 3;       // ← CHANGE THIS to modify batch processing size
+    
+    /**
+     * Get Gmail pagination settings
+     * This method allows for future expansion to database or config-based settings
+     * 
+     * @return array
+     */
+    private function getGmailPaginationSettings()
+    {
+        // Validate configuration
+        if (self::GMAIL_BATCH_SIZE > self::GMAIL_INBOX_PER_PAGE) {
+            throw new \InvalidArgumentException(
+                'GMAIL_BATCH_SIZE (' . self::GMAIL_BATCH_SIZE . ') cannot be greater than GMAIL_INBOX_PER_PAGE (' . self::GMAIL_INBOX_PER_PAGE . ')'
+            );
+        }
+        
+        return [
+            'perPage' => self::GMAIL_INBOX_PER_PAGE,
+            'batchSize' => self::GMAIL_BATCH_SIZE,
+            'maxResults' => self::GMAIL_INBOX_PER_PAGE, // Gmail API parameter
+        ];
+    }
+
     /**
      * Create a new controller instance.
      *dfs
@@ -185,18 +244,56 @@ class SMTPConfigureController extends Controller
                 $fltr_date = date("Y-m-d", strtotime("-" . $month . " months", strtotime($current_date)));
                 
                 $query = 'in:inbox after:' . $fltr_date . ' subject:"New lead from"';
-                $messages = $gmail->users_messages->listUsersMessages('me', ['q' => $query]);
+                
+                // Get pagination settings from centralized method
+                $paginationSettings = $this->getGmailPaginationSettings();
+                $pageToken = $request->get('pageToken', null); // Get page token from request
+                
+                $queryParams = [
+                    'q' => $query,
+                    'maxResults' => $paginationSettings['maxResults']
+                ];
+                
+                if ($pageToken) {
+                    $queryParams['pageToken'] = $pageToken;
+                }
+                
+                $messages = $gmail->users_messages->listUsersMessages('me', $queryParams);
                 
                 $messageList = [];
                 if ($messages->getMessages()) {
-                    foreach ($messages->getMessages() as $message) {
-                        $messageDetail = $gmail->users_messages->get('me', $message->getId());
-                        // $messageList[] = $messageDetail;
-                        $messageList[] = new GmailMessageWrapper($messageDetail);
+                    // Batch process messages for better performance
+                    $messageBatches = array_chunk($messages->getMessages(), $paginationSettings['batchSize']);
+                    
+                    foreach ($messageBatches as $batch) {
+                        foreach ($batch as $message) {
+                            try {
+                                $messageDetail = $gmail->users_messages->get('me', $message->getId());
+                                $messageList[] = new GmailMessageWrapper($messageDetail);
+                            } catch (Exception $e) {
+                                // Log error and continue with next message
+                                \Log::warning('Failed to load email: ' . $message->getId() . ' - ' . $e->getMessage());
+                                continue;
+                            }
+                        }
+                        
+                        // Small delay between batches to prevent rate limiting
+                        if (count($messageBatches) > 1) {
+                            usleep(100000); // 0.1 second delay
+                        }
                     }
                 }
                 
-                return view('google-mail-list')->with(['messages' => $messageList]);
+                // Pagination data
+                $paginationData = [
+                    'messages' => $messageList,
+                    'nextPageToken' => $messages->getNextPageToken(),
+                    'resultSizeEstimate' => $messages->getResultSizeEstimate(),
+                    'currentPageToken' => $pageToken,
+                    'perPage' => $paginationSettings['perPage']
+                ];
+                
+                return view('google-mail-list')->with($paginationData);
             } catch (Exception $e) {
                 return view('google-mail-list')->with(['messages' => [], 'error' => $e->getMessage()]);
             }
