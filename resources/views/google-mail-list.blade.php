@@ -42,8 +42,31 @@
     <!-- Pagination Info -->
     <div class="col-sm-12 mb-3">
         <div class="pagination-info" style="background: #f8f9fa; padding: 10px; border-radius: 5px; margin-bottom: 20px;">
-            <!-- <strong>Total emails found:</strong> {{ isset($resultSizeEstimate) ? $resultSizeEstimate : 'Loading...' }} -->
-            <span class="pull-right">Showing {{ count($messages) }} emails per page</span>
+            <div class="row align-items-center">
+                <div class="col-sm-6">
+                    <div class="page-size-selector">
+                        <label for="pageSize" style="margin-right: 10px; font-weight: bold;">Emails per page:</label>
+                        <select id="pageSize" name="pageSize" class="page-size-select" onchange="changePageSize(this.value)">
+                            @if(isset($allowedPageSizes))
+                                @foreach($allowedPageSizes as $size)
+                                    <option value="{{ $size }}" {{ (isset($currentPageSize) && $currentPageSize == $size) ? 'selected' : '' }}>
+                                        {{ $size === 'all' ? 'All' : $size }}
+                                    </option>
+                                @endforeach
+                            @else
+                                <option value="9" selected>9</option>
+                                <option value="18">18</option>
+                                <option value="27">27</option>
+                                <option value="36">36</option>
+                                <option value="all">All</option>
+                            @endif
+                        </select>
+                    </div>
+                </div>
+                <div class="col-sm-6">
+                    <span class="pull-right">Showing {{ count($messages) }} emails{{ isset($currentPageSize) && $currentPageSize !== 'all' ? ' per page' : '' }}</span>
+                </div>
+            </div>
         </div>
     </div>
     
@@ -97,7 +120,7 @@
             <ul class="pagination justify-content-center" style="margin-top: 30px;">
                 @if(isset($currentPageToken) && $currentPageToken)
                     <li class="page-item">
-                        <a class="page-link" href="{{ url('google-inbox') }}" aria-label="First">
+                        <a class="page-link" href="{{ url('google-inbox') }}{{ isset($currentPageSize) ? '?pageSize=' . $currentPageSize : '' }}" aria-label="First">
                             <span aria-hidden="true">&laquo;&laquo; First</span>
                         </a>
                     </li>
@@ -105,13 +128,13 @@
                 
                 @if(isset($nextPageToken) && $nextPageToken)
                     <li class="page-item">
-                        <a class="page-link" href="{{ url('google-inbox') }}?pageToken={{ $nextPageToken }}" aria-label="Next">
+                        <a class="page-link" href="{{ url('google-inbox') }}?pageToken={{ $nextPageToken }}{{ isset($currentPageSize) ? '&pageSize=' . $currentPageSize : '' }}" aria-label="Next">
                             <span aria-hidden="true">Next &raquo;</span>
                         </a>
                     </li>
                 @else
                     <li class="page-item disabled">
-                        <span class="page-link">No more emails</span>
+                        <span class="page-link">{{ isset($currentPageSize) && $currentPageSize === 'all' ? 'All emails loaded' : 'No more emails' }}</span>
                     </li>
                 @endif
             </ul>
@@ -328,6 +351,47 @@
         font-size: 14px;
     }
     
+    /* Page Size Selector Styles */
+    .page-size-selector {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    
+    .page-size-selector label {
+        margin-right: 10px;
+        font-weight: bold;
+        color: #495057;
+        white-space: nowrap;
+    }
+    
+    .page-size-select {
+        padding: 5px 10px;
+        border: 1px solid #80b951;
+        border-radius: 4px;
+        background-color: #fff;
+        color: #495057;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        min-width: 80px;
+    }
+    
+    .page-size-select:hover {
+        border-color: #6a9a3e;
+        box-shadow: 0 0 0 0.2rem rgba(128, 185, 81, 0.25);
+    }
+    
+    .page-size-select:focus {
+        outline: none;
+        border-color: #80b951;
+        box-shadow: 0 0 0 0.2rem rgba(128, 185, 81, 0.25);
+    }
+    
+    .page-size-select option {
+        padding: 5px;
+    }
+    
     .pagination {
         background: #fff;
         padding: 20px;
@@ -407,6 +471,30 @@
             margin-top: 10px;
         }
         
+        .pagination-info .row {
+            flex-direction: column;
+        }
+        
+        .pagination-info .col-sm-6 {
+            margin-bottom: 10px;
+        }
+        
+        .page-size-selector {
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+        
+        .page-size-selector label {
+            margin-right: 8px;
+            font-size: 12px;
+        }
+        
+        .page-size-select {
+            font-size: 12px;
+            padding: 4px 8px;
+            min-width: 70px;
+        }
+        
         .pagination {
             padding: 10px;
         }
@@ -461,6 +549,33 @@
             max-height: 40px !important;
             min-height: 40px !important;
         }
+        
+        .pagination-info {
+            padding: 10px;
+        }
+        
+        .page-size-selector {
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        
+        .page-size-selector label {
+            margin-right: 0;
+            margin-bottom: 5px;
+            font-size: 11px;
+        }
+        
+        .page-size-select {
+            font-size: 11px;
+            padding: 3px 6px;
+            min-width: 60px;
+        }
+        
+        .pagination-info .pull-right {
+            text-align: center;
+            font-size: 11px;
+        }
     }
     
     /* Force text truncation for any overflow */
@@ -473,6 +588,46 @@
 
 @section('customscripts')
 <script>
+// Function to change page size
+function changePageSize(pageSize) {
+    // Show loading indicator
+    showLoadingIndicator();
+    
+    // Redirect to the same page with new page size
+    const baseUrl = "{{ url('google-inbox') }}";
+    const newUrl = baseUrl + '?pageSize=' + pageSize;
+    window.location.href = newUrl;
+}
+
+// Function to show loading indicator
+function showLoadingIndicator() {
+    const loadingHtml = `
+        <div id="loading-overlay" style="
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.8);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 18px;
+        ">
+            <div style="text-align: center;">
+                <div class="spinner-border text-success" role="status" style="width: 3rem; height: 3rem;">
+                    <span class="sr-only">Loading...</span>
+                </div>
+                <div style="margin-top: 15px; color: #80b951; font-weight: bold;">
+                    Loading emails...
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', loadingHtml);
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Add loading indicator for pagination links
     const paginationLinks = document.querySelectorAll('.pagination .page-link');
@@ -480,32 +635,7 @@ document.addEventListener('DOMContentLoaded', function() {
     paginationLinks.forEach(function(link) {
         link.addEventListener('click', function(e) {
             if (!this.parentElement.classList.contains('disabled')) {
-                // Show loading indicator
-                const loadingHtml = `
-                    <div id="loading-overlay" style="
-                        position: fixed;
-                        top: 0;
-                        left: 0;
-                        width: 100%;
-                        height: 100%;
-                        background: rgba(255,255,255,0.8);
-                        z-index: 9999;
-                        display: flex;
-                        justify-content: center;
-                        align-items: center;
-                        font-size: 18px;
-                    ">
-                        <div style="text-align: center;">
-                            <div class="spinner-border text-success" role="status" style="width: 3rem; height: 3rem;">
-                                <span class="sr-only">Loading...</span>
-                            </div>
-                            <div style="margin-top: 15px; color: #80b951; font-weight: bold;">
-                                Loading emails...
-                            </div>
-                        </div>
-                    </div>
-                `;
-                document.body.insertAdjacentHTML('beforeend', loadingHtml);
+                showLoadingIndicator();
             }
         });
     });
@@ -516,11 +646,19 @@ document.addEventListener('DOMContentLoaded', function() {
     refreshButton.className = 'btn btn-success btn-sm';
     refreshButton.style.cssText = 'position: fixed; bottom: 20px; right: 20px; z-index: 1000; border-radius: 25px; padding: 10px 20px;';
     refreshButton.addEventListener('click', function() {
+        showLoadingIndicator();
         window.location.reload();
     });
     
     // Add refresh button to page
     document.body.appendChild(refreshButton);
+    
+    // Update page size selector styling on mobile
+    const pageSize = document.getElementById('pageSize');
+    if (pageSize && window.innerWidth <= 768) {
+        pageSize.style.fontSize = '12px';
+        pageSize.style.padding = '4px 8px';
+    }
 });
 </script>
 @endsection

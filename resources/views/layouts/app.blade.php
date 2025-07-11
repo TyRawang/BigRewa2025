@@ -264,7 +264,7 @@
     <!-- Scripts -->
     @stack('scripts')
 
-    <link rel="shortcut icon" sizes="192x192" href="{{ url('images/favicon6.ico') }}">
+    <link rel="shortcut icon" sizes="192x192" href="{{ url('images/logo/logo2.png') }}">
 </head>
 <body>
     <div class="main-wrapper">

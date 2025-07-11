@@ -49,28 +49,42 @@ class SMTPConfigureController extends Controller
      * 
      * CHANGE THESE VALUES TO MODIFY PAGE SIZE:
      */
-    const GMAIL_INBOX_PER_PAGE = 9;  // ← CHANGE THIS to modify emails per page
-    const GMAIL_BATCH_SIZE = 9;       // ← CHANGE THIS to modify batch processing size
+    const GMAIL_INBOX_PER_PAGE = 9;  // ← Default page size
+    const GMAIL_BATCH_SIZE = 9;       // ← Default batch processing size
+    const GMAIL_MAX_RESULTS = 100;   // ← Maximum results for "All" option
     
     /**
-     * Get Gmail pagination settings
-     * This method allows for future expansion to database or config-based settings
+     * Get Gmail pagination settings with dynamic page size support
      * 
+     * @param int|null $pageSize
      * @return array
      */
-    private function getGmailPaginationSettings()
+    private function getGmailPaginationSettings($pageSize = null)
     {
+        // Define allowed page sizes
+        $allowedPageSizes = [9, 18, 27, 36, 'all'];
+        
+        // Use provided page size or default
+        if ($pageSize && in_array($pageSize, $allowedPageSizes)) {
+            $perPage = $pageSize === 'all' ? self::GMAIL_MAX_RESULTS : $pageSize;
+        } else {
+            $perPage = self::GMAIL_INBOX_PER_PAGE;
+        }
+        
+        // Calculate batch size (50% of page size, min 5, max 25)
+        $batchSize = $pageSize === 'all' ? 25 : min(25, max(5, intval($perPage / 2)));
+        
         // Validate configuration
-        if (self::GMAIL_BATCH_SIZE > self::GMAIL_INBOX_PER_PAGE) {
-            throw new \InvalidArgumentException(
-                'GMAIL_BATCH_SIZE (' . self::GMAIL_BATCH_SIZE . ') cannot be greater than GMAIL_INBOX_PER_PAGE (' . self::GMAIL_INBOX_PER_PAGE . ')'
-            );
+        if ($batchSize > $perPage && $pageSize !== 'all') {
+            $batchSize = $perPage;
         }
         
         return [
-            'perPage' => self::GMAIL_INBOX_PER_PAGE,
-            'batchSize' => self::GMAIL_BATCH_SIZE,
-            'maxResults' => self::GMAIL_INBOX_PER_PAGE, // Gmail API parameter
+            'perPage' => $perPage,
+            'batchSize' => $batchSize,
+            'maxResults' => $perPage,
+            'pageSize' => $pageSize ?: 9,
+            'allowedPageSizes' => $allowedPageSizes
         ];
     }
 
@@ -245,9 +259,10 @@ class SMTPConfigureController extends Controller
                 
                 $query = 'in:inbox after:' . $fltr_date . ' subject:"New lead from"';
                 
-                // Get pagination settings from centralized method
-                $paginationSettings = $this->getGmailPaginationSettings();
-                $pageToken = $request->get('pageToken', null); // Get page token from request
+                // Get pagination settings with dynamic page size
+                $pageSize = $request->get('pageSize', null);
+                $paginationSettings = $this->getGmailPaginationSettings($pageSize);
+                $pageToken = $request->get('pageToken', null);
                 
                 $queryParams = [
                     'q' => $query,
@@ -290,7 +305,9 @@ class SMTPConfigureController extends Controller
                     'nextPageToken' => $messages->getNextPageToken(),
                     'resultSizeEstimate' => $messages->getResultSizeEstimate(),
                     'currentPageToken' => $pageToken,
-                    'perPage' => $paginationSettings['perPage']
+                    'perPage' => $paginationSettings['perPage'],
+                    'currentPageSize' => $paginationSettings['pageSize'],
+                    'allowedPageSizes' => $paginationSettings['allowedPageSizes']
                 ];
                 
                 return view('google-mail-list')->with($paginationData);
