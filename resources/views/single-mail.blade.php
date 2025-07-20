@@ -208,18 +208,47 @@
                     @foreach($extra_fields as $key => $field)
                     <div class="form-group">
                         <label class="col-md-12 control-label" for="{{ $field->field_name }}">{{ $field->field_name }}</label>
+                        
+                        @if($field->field1_type != 'null')
+                        <div class="col-md-12 ">
+                            @if($field->field1_type == 'radio')
+                                <div style="margin-bottom: 10px;">
+                                    <label style="margin-right: 15px;"><input type="radio" name="extra[value1][{{ $key }}]" value="yes" style="margin-right: 5px;">Yes</label>
+                                    <label><input type="radio" name="extra[value1][{{ $key }}]" value="no" style="margin-right: 5px;">No</label>
+                                </div>
+                            @else
+                                @if($field->field_name == 'Scale Fee')
+                                <input type="{{ $field->field1_type }}" class="form-control" required="" name="extra[value1][{{ $key }}]" value="Standard" style="margin-bottom: 10px;">								
+                                    
+                                @elseif($field->field_name == 'Storage')
+                                <input type="{{ $field->field1_type }}" class="form-control" required="" name="extra[value1][{{ $key }}]" value="Included" style="margin-bottom: 10px;">		
+                                
+                                @else
+                                <input type="{{ $field->field1_type }}" class="form-control" required="" name="extra[value1][{{ $key }}]" style="margin-bottom: 10px;">		
+                                    
+                                @endif							
+                            @endif
+                        </div>
+                        @endif
+
                         <div class="col-md-12 ">
                             @if($field->field_type == 'radio')
-                                  <label><input type="radio" check
-                                   name="extra[value][{{ $key }}]" value="yes">Yes</label>
-                                   <label><input type="radio"  check
-                                   name="extra[value][{{ $key }}]" value="no">No</label>
+                                <div style="margin-bottom: 10px;">
+                                    <label style="margin-right: 15px;"><input type="radio" name="extra[value][{{ $key }}]" value="yes" style="margin-right: 5px;">Yes</label>
+                                    <label><input type="radio" name="extra[value][{{ $key }}]" value="no" style="margin-right: 5px;">No</label>
+                                </div>
                             @else
-                            <input type="{{ $field->field_type }}" class="form-control" required="" name="extra[value][{{ $key }}]">
-
+                                @if($field->field_name == 'Scale Fee')
+                                    <input type="{{ $field->field_type }}" class="form-control" required="" name="extra[value][{{ $key }}]" value="50.00">
+                                    
+                                @else
+                                    <input type="{{ $field->field_type }}" class="form-control" required="" name="extra[value][{{ $key }}]">
+                                    
+                                @endif							
                             @endif
                             <input type="hidden" class="form-control" required="" name="extra[key][{{ $key }}]" value="{{ $field->field_name }}">
                             <input type="hidden" class="form-control" required="" name="extra[type][{{ $key }}]" value="{{ $field->field_type }}">
+                            <input type="hidden" class="form-control" required="" name="extra[type1][{{ $key }}]" value="{{ $field->field1_type }}">
                         </div>
                     </div>
                     @endforeach
